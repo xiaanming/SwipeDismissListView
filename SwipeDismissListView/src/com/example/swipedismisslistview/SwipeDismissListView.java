@@ -68,21 +68,24 @@ public class SwipeDismissListView extends ListView {
 
 		ViewConfiguration vc = ViewConfiguration.get(context);
 		mSlop = vc.getScaledTouchSlop();
-		mMinFlingVelocity = vc.getScaledMinimumFlingVelocity() * 8;
-		mMaxFlingVelocity = vc.getScaledMaximumFlingVelocity();
+		mMinFlingVelocity = vc.getScaledMinimumFlingVelocity() * 8; //获取滑动的最小速度
+		mMaxFlingVelocity = vc.getScaledMaximumFlingVelocity();  //获取滑动的最大速度
 		mAnimationTime = context.getResources().getInteger(
 				android.R.integer.config_shortAnimTime);
 	}
 
+	
 	@Override
 	public boolean onTouchEvent(MotionEvent ev) {
 		switch (ev.getAction()) {
 		case MotionEvent.ACTION_DOWN:
-			return handleActionDown(ev);
+			handleActionDown(ev);
+			break;
 		case MotionEvent.ACTION_MOVE:
 			return handleActionMove(ev);
 		case MotionEvent.ACTION_UP:
-			return handleActionUp(ev);
+			handleActionUp(ev);
+			break;
 		}
 		return super.onTouchEvent(ev);
 	}
@@ -93,14 +96,14 @@ public class SwipeDismissListView extends ListView {
 	 * @param ev
 	 * @return
 	 */
-	private boolean handleActionDown(MotionEvent ev) {
+	private void handleActionDown(MotionEvent ev) {
 		mDownX = ev.getX();
 		mDownY = ev.getY();
-
+		
 		mDownPosition = pointToPosition((int) mDownX, (int) mDownY);
 
 		if (mDownPosition == AdapterView.INVALID_POSITION) {
-			return super.onTouchEvent(ev);
+			return;
 		}
 
 		mDownView = getChildAt(mDownPosition - getFirstVisiblePosition());
@@ -112,8 +115,6 @@ public class SwipeDismissListView extends ListView {
 		//加入速度检测
 		mVelocityTracker = VelocityTracker.obtain();
 		mVelocityTracker.addMovement(ev);
-
-		return super.onTouchEvent(ev);
 	}
 
 	/**
@@ -123,7 +124,7 @@ public class SwipeDismissListView extends ListView {
 	 * @return
 	 */
 	private boolean handleActionMove(MotionEvent ev) {
-		if (mVelocityTracker == null) {
+		if (mVelocityTracker == null || mDownView == null) {
 			return super.onTouchEvent(ev);
 		}
 
@@ -153,9 +154,13 @@ public class SwipeDismissListView extends ListView {
 
 	}
 
-	private boolean handleActionUp(MotionEvent ev) {
+	/**
+	 * 手指抬起的事件处理
+	 * @param ev
+	 */
+	private void handleActionUp(MotionEvent ev) {
 		if (mVelocityTracker == null || !mSwiping) {
-			return super.onTouchEvent(ev);
+			return;
 		}
 
 		float deltaX = ev.getX() - mDownX;
@@ -200,14 +205,13 @@ public class SwipeDismissListView extends ListView {
 			mVelocityTracker.recycle();
 			mVelocityTracker = null;
 		}
+		
 		mSwiping = false;
-
-		return super.onTouchEvent(ev);
 	}
 
 	
 	/**
-	 * 在此方法中执行
+	 * 在此方法中执行item删除之后，其他的item向上或者向下滚动的动画，并且将position回调到方法onDismiss()中
 	 * @param dismissView
 	 * @param dismissPosition
 	 */
@@ -215,8 +219,8 @@ public class SwipeDismissListView extends ListView {
 		final ViewGroup.LayoutParams lp = dismissView.getLayoutParams();
 		final int originalHeight = dismissView.getHeight();
 
-		ValueAnimator animator = ValueAnimator.ofInt(originalHeight, 0)
-				.setDuration(mAnimationTime);
+		//
+		ValueAnimator animator = ValueAnimator.ofInt(originalHeight, 0).setDuration(mAnimationTime);
 		animator.start();
 
 		animator.addListener(new AnimatorListenerAdapter() {
