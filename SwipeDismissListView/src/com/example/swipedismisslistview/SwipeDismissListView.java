@@ -135,6 +135,12 @@ public class SwipeDismissListView extends ListView {
 		// X方向滑动的距离大于mSlop并且Y方向滑动的距离小于mSlop，表示可以滑动
 		if (Math.abs(deltaX) > mSlop && Math.abs(deltaY) < mSlop) {
 			mSwiping = true;
+			
+			//当手指滑动item,取消item的点击事件，不然我们滑动Item也伴随着item点击事件的发生
+			MotionEvent cancelEvent = MotionEvent.obtain(ev);
+            cancelEvent.setAction(MotionEvent.ACTION_CANCEL |
+                       (ev.getActionIndex()<< MotionEvent.ACTION_POINTER_INDEX_SHIFT));
+            onTouchEvent(cancelEvent);
 		}
 
 		if (mSwiping) {
