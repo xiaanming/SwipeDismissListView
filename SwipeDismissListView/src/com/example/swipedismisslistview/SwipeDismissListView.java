@@ -10,12 +10,14 @@ import android.view.VelocityTracker;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
+import android.view.animation.LinearInterpolator;
 import android.widget.AdapterView;
 import android.widget.ListView;
 
 import com.nineoldandroids.animation.Animator;
 import com.nineoldandroids.animation.AnimatorListenerAdapter;
 import com.nineoldandroids.animation.ValueAnimator;
+import com.nineoldandroids.view.ViewHelper;
 /**
  * @blog http://blog.csdn.net/xiaanming
  * 
@@ -23,17 +25,47 @@ import com.nineoldandroids.animation.ValueAnimator;
  *
  */
 public class SwipeDismissListView extends ListView {
+	/**
+	 * 认为是用户滑动的最小距离
+	 */
 	private int mSlop;
+	/**
+	 * 滑动的最小速度
+	 */
 	private int mMinFlingVelocity;
+	/**
+	 * 滑动的最大速度
+	 */
 	private int mMaxFlingVelocity;
-	protected long mAnimationTime;
+	/**
+	 * 执行动画的时间
+	 */
+	protected long mAnimationTime = 150;
+	/**
+	 * 用来标记用户是否正在滑动中
+	 */
 	private boolean mSwiping;
+	/**
+	 * 滑动速度检测类
+	 */
 	private VelocityTracker mVelocityTracker;
+	/**
+	 * 手指按下的position
+	 */
 	private int mDownPosition;
+	/**
+	 * 按下的item对应的View
+	 */
 	private View mDownView;
 	private float mDownX;
 	private float mDownY;
+	/**
+	 * item的宽度
+	 */
 	private int mViewWidth;
+	/**
+	 * 当ListView的Item滑出界面回调的接口
+	 */
 	private OnDismissCallback onDismissCallback;
 
 	/**
@@ -70,8 +102,6 @@ public class SwipeDismissListView extends ListView {
 		mSlop = vc.getScaledTouchSlop();
 		mMinFlingVelocity = vc.getScaledMinimumFlingVelocity() * 8; //获取滑动的最小速度
 		mMaxFlingVelocity = vc.getScaledMaximumFlingVelocity();  //获取滑动的最大速度
-		mAnimationTime = context.getResources().getInteger(
-				android.R.integer.config_shortAnimTime);
 	}
 
 	
@@ -116,6 +146,7 @@ public class SwipeDismissListView extends ListView {
 		mVelocityTracker = VelocityTracker.obtain();
 		mVelocityTracker.addMovement(ev);
 	}
+	
 
 	/**
 	 * 处理手指滑动的方法
@@ -145,12 +176,9 @@ public class SwipeDismissListView extends ListView {
 
 		if (mSwiping) {
 			// 跟谁手指移动item
-			setTranslationX(mDownView, deltaX);
+			ViewHelper.setTranslationX(mDownView, deltaX);
 			// 透明度渐变
-			setAlpha(mDownView,
-					Math.max(
-							0f,
-							Math.min(1f, 1f - 2f * Math.abs(deltaX)/ mViewWidth)));
+			ViewHelper.setAlpha(mDownView, Math.max(0f, Math.min(1f, 1f - 2f * Math.abs(deltaX)/ mViewWidth)));
 
 			// 手指滑动的时候,返回true，表示SwipeDismissListView自己处理onTouchEvent,其他的就交给父类来处理
 			return true;
@@ -165,7 +193,7 @@ public class SwipeDismissListView extends ListView {
 	 * @param ev
 	 */
 	private void handleActionUp(MotionEvent ev) {
-		if (mVelocityTracker == null || !mSwiping) {
+		if (mVelocityTracker == null || mDownView == null|| !mSwiping) {
 			return;
 		}
 
@@ -176,11 +204,15 @@ public class SwipeDismissListView extends ListView {
 		float velocityX = Math.abs(mVelocityTracker.getXVelocity());
 		float velocityY = Math.abs(mVelocityTracker.getYVelocity());
 		
-		boolean dismiss = false;
+		boolean dismiss = false; //item是否要滑出屏幕
 		boolean dismissRight = false;//是否往右边删除
+		
+		//当拖动item的距离大于item的一半，item滑出屏幕
 		if (Math.abs(deltaX) > mViewWidth / 2) {
 			dismiss = true;
 			dismissRight = deltaX > 0;
+			
+			//手指在屏幕滑动的速度在某个范围内，也使得item滑出屏幕
 		} else if (mMinFlingVelocity <= velocityX
 				&& velocityX <= mMaxFlingVelocity && velocityY < velocityX) {
 			dismiss = true;
@@ -200,6 +232,7 @@ public class SwipeDismissListView extends ListView {
 						}
 					});
 		} else {
+			//将item滑动至开始位置
 			animate(mDownView)
 			.translationX(0)
 			.alpha(1)	
@@ -214,6 +247,7 @@ public class SwipeDismissListView extends ListView {
 		
 		mSwiping = false;
 	}
+	
 
 	
 	/**
@@ -222,11 +256,11 @@ public class SwipeDismissListView extends ListView {
 	 * @param dismissPosition
 	 */
 	private void performDismiss(final View dismissView, final int dismissPosition) {
-		final ViewGroup.LayoutParams lp = dismissView.getLayoutParams();
-		final int originalHeight = dismissView.getHeight();
+		final ViewGroup.LayoutParams lp = dismissView.getLayoutParams();//获取item的布局参数
+		final int originalHeight = dismissView.getHeight();//item的高度
 
-		//
 		ValueAnimator animator = ValueAnimator.ofInt(originalHeight, 0).setDuration(mAnimationTime);
+		animator.setInterpolator(new LinearInterpolator());
 		animator.start();
 
 		animator.addListener(new AnimatorListenerAdapter() {
@@ -237,6 +271,7 @@ public class SwipeDismissListView extends ListView {
 				}
 
 				//这段代码很重要，因为我们并没有将item从ListView中移除，而是将item的高度设置为0
+				//所以我们在动画执行完毕之后将item设置回来
 				setAlpha(dismissView, 1f);
 				setTranslationX(dismissView, 0);
 				ViewGroup.LayoutParams lp = dismissView.getLayoutParams();
