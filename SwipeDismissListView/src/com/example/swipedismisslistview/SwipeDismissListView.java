@@ -1,8 +1,5 @@
 package com.example.swipedismisslistview;
 
-import static com.nineoldandroids.view.ViewHelper.setAlpha;
-import static com.nineoldandroids.view.ViewHelper.setTranslationX;
-import static com.nineoldandroids.view.ViewPropertyAnimator.animate;
 import android.content.Context;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
@@ -10,14 +7,15 @@ import android.view.VelocityTracker;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
-import android.view.animation.LinearInterpolator;
 import android.widget.AdapterView;
 import android.widget.ListView;
 
 import com.nineoldandroids.animation.Animator;
 import com.nineoldandroids.animation.AnimatorListenerAdapter;
+import com.nineoldandroids.animation.ObjectAnimator;
 import com.nineoldandroids.animation.ValueAnimator;
 import com.nineoldandroids.view.ViewHelper;
+import com.nineoldandroids.view.ViewPropertyAnimator;
 /**
  * @blog http://blog.csdn.net/xiaanming
  * 
@@ -159,7 +157,6 @@ public class SwipeDismissListView extends ListView {
 			return super.onTouchEvent(ev);
 		}
 
-		// 获取X方向滑动的距离
 		float deltaX = ev.getX() - mDownX;
 		float deltaY = ev.getY() - mDownY;
 
@@ -220,7 +217,20 @@ public class SwipeDismissListView extends ListView {
 		}
 
 		if (dismiss) {
-			animate(mDownView)
+			
+//			AnimatorSet set = new AnimatorSet();
+//			set.playTogether(ObjectAnimator.ofFloat(mDownView, "translationX", dismissRight ? mViewWidth : -mViewWidth), 
+//							ObjectAnimator.ofFloat(mDownView, "alpha", 0));
+//			set.setDuration(mAnimationTime).start();
+//			set.addListener(new AnimatorListenerAdapter() {
+//						@Override
+//						public void onAnimationEnd(Animator animation) {
+//							//Item滑出界面之后执行删除
+//							performDismiss(mDownView, mDownPosition);
+//						}
+//					});
+			
+			ViewPropertyAnimator.animate(mDownView)
 					.translationX(dismissRight ? mViewWidth : -mViewWidth)//X轴方向的移动距离
 					.alpha(0)
 					.setDuration(mAnimationTime)
@@ -233,7 +243,7 @@ public class SwipeDismissListView extends ListView {
 					});
 		} else {
 			//将item滑动至开始位置
-			animate(mDownView)
+			ViewPropertyAnimator.animate(mDownView)
 			.translationX(0)
 			.alpha(1)	
 			.setDuration(mAnimationTime).setListener(null);
@@ -260,9 +270,9 @@ public class SwipeDismissListView extends ListView {
 		final int originalHeight = dismissView.getHeight();//item的高度
 
 		ValueAnimator animator = ValueAnimator.ofInt(originalHeight, 0).setDuration(mAnimationTime);
-		animator.setInterpolator(new LinearInterpolator());
 		animator.start();
 
+		
 		animator.addListener(new AnimatorListenerAdapter() {
 			@Override
 			public void onAnimationEnd(Animator animation) {
@@ -272,8 +282,8 @@ public class SwipeDismissListView extends ListView {
 
 				//这段代码很重要，因为我们并没有将item从ListView中移除，而是将item的高度设置为0
 				//所以我们在动画执行完毕之后将item设置回来
-				setAlpha(dismissView, 1f);
-				setTranslationX(dismissView, 0);
+				ViewHelper.setAlpha(dismissView, 1f);
+				ViewHelper.setTranslationX(dismissView, 0);
 				ViewGroup.LayoutParams lp = dismissView.getLayoutParams();
 				lp.height = originalHeight;
 				dismissView.setLayoutParams(lp);
